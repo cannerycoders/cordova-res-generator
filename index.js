@@ -206,19 +206,38 @@ function generateForConfig(imageObj, settings, config) {
         return defer.promise;
     };
 
+    /* we'd like to combine resize and crop:
+        - assume the square image is designed so extreme portrain
+          and landscape map to rull res.
+     */
     var transformSplash = (definition) => {
         var defer = Q.defer();
         var image = imageObj.splash.clone();
+        let ar = definition.width / definition.height;
+        let cropX, cropY, cropW, cropH;
+        if(ar <= 1)   // portrait
+        {
+            // portrait: keep height, crop width
+            cropW = Math.round(image.bitmap.height * ar);
+            cropH = image.bitmap.height;
+            cropX = Math.round((image.bitmap.width - cropW) / 2);
+            cropY = 0;
+        }
+        else
+        {
+            // landscape: keep width, crop height
+            cropW = image.bitmap.width;
+            cropH = Math.round(image.bitmap.height / ar);
+            cropX = 0;
+            cropY = Math.round((image.bitmap.height - cropH) / 2);
+        }
 
-        var x = (image.bitmap.width - definition.width) / 2;
-        var y = (image.bitmap.height - definition.height) / 2;
-        var width = definition.width;
-        var height = definition.height;
-
+        console.log(`crop: ${cropW} ${cropH} ${cropX} ${cropY}`);
+        console.log(`resize: ${definition.width} ${definition.height}\n`);
         var outputFilePath = path.join(platformPath, definition.name);
-
         image
-            .crop(x, y, width, height)
+            .crop(cropX, cropY, cropW, cropH)
+            .resize(definition.width, definition.height)
             .write(outputFilePath,
                 (err) => {
                     if (err) defer.reject(err);
